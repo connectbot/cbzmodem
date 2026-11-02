@@ -18,11 +18,6 @@ python3 tests/benchmark.py  # compares ACK windows with 10 ms response delay
 ./gradlew :zmodemlib:publishToMavenLocal
 ```
 
-Formatting uses the same Spotless/ktlint, EditorConfig, and Apache license-header
-rules as cbssh. `spotlessApply` formats Kotlin sources, Gradle scripts, workflow
-YAML, XML, TOML, and project text files. It works in a new checkout without an
-`origin/main` ref. `build` runs `spotlessCheck` and public API compatibility checks.
-
 ## GitHub Actions and releases
 
 CI verifies builds and `lrzsz` interoperability on JDK 17, 21, and 25. A manual

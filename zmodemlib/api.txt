@@ -1,0 +1,173 @@
+// Signature format: 4.0
+package org.connectbot.zmodemlib {
+
+  public final class Detector {
+    ctor public Detector();
+    method public org.connectbot.zmodemlib.Detector.Result accept(byte[] bytes);
+    method public byte[] finish();
+  }
+
+  public static final class Detector.Result {
+    ctor public Detector.Result(byte[] terminal, org.connectbot.zmodemlib.Header? request, byte[] remainder);
+    method public byte[] component1();
+    method public org.connectbot.zmodemlib.Header? component2();
+    method public byte[] component3();
+    method public org.connectbot.zmodemlib.Detector.Result copy(optional byte[] terminal, optional org.connectbot.zmodemlib.Header? request, optional byte[] remainder);
+    method public boolean equals(java.lang.Object? other);
+    method @InaccessibleFromKotlin public byte[] getRemainder();
+    method @InaccessibleFromKotlin public org.connectbot.zmodemlib.Header? getRequest();
+    method @InaccessibleFromKotlin public byte[] getTerminal();
+    method public int hashCode();
+    method public java.lang.String toString();
+    property public byte[] remainder;
+    property public org.connectbot.zmodemlib.Header? request;
+    property public byte[] terminal;
+  }
+
+  public interface Download {
+    method public suspend java.lang.Object? abort(kotlin.coroutines.Continuation<? super kotlin.Unit>);
+    method public suspend java.lang.Object? complete(kotlin.coroutines.Continuation<? super kotlin.Unit>);
+    method public suspend java.lang.Object? write(byte[] bytes, kotlin.coroutines.Continuation<? super kotlin.Unit>);
+  }
+
+  public final class Framing {
+    method public byte[] cancelSequence();
+    method public int crc16(byte[] bytes);
+    method public byte[] header(org.connectbot.zmodemlib.Header value);
+    method public byte[] packet(byte[] bytes, int end);
+    method public org.connectbot.zmodemlib.Framing.ParsedHeader? parseHeader(byte[] input);
+    method public org.connectbot.zmodemlib.Framing.Packet? parsePacket(byte[] input, boolean crc32, optional int maxBytes);
+    property public static int ZACK;
+    property public static int ZCRCE;
+    property public static int ZCRCG;
+    property public static int ZCRCQ;
+    property public static int ZCRCW;
+    property public static int ZDATA;
+    property public static int ZEOF;
+    property public static int ZFILE;
+    property public static int ZFIN;
+    property public static int ZNAK;
+    property public static int ZRINIT;
+    property public static int ZRPOS;
+    property public static int ZRQINIT;
+    property public static int ZSINIT;
+    property public static int ZSKIP;
+    field public static final org.connectbot.zmodemlib.Framing INSTANCE;
+    field public static final int ZACK = 3; // 0x3
+    field public static final int ZCRCE = 104; // 0x68
+    field public static final int ZCRCG = 105; // 0x69
+    field public static final int ZCRCQ = 106; // 0x6a
+    field public static final int ZCRCW = 107; // 0x6b
+    field public static final int ZDATA = 10; // 0xa
+    field public static final int ZEOF = 11; // 0xb
+    field public static final int ZFILE = 4; // 0x4
+    field public static final int ZFIN = 8; // 0x8
+    field public static final int ZNAK = 6; // 0x6
+    field public static final int ZRINIT = 1; // 0x1
+    field public static final int ZRPOS = 9; // 0x9
+    field public static final int ZRQINIT = 0; // 0x0
+    field public static final int ZSINIT = 2; // 0x2
+    field public static final int ZSKIP = 5; // 0x5
+  }
+
+  public static final class Framing.Packet {
+    ctor public Framing.Packet(byte[] bytes, int end, int consumed);
+    method public byte[] component1();
+    method public int component2();
+    method public int component3();
+    method public org.connectbot.zmodemlib.Framing.Packet copy(optional byte[] bytes, optional int end, optional int consumed);
+    method public boolean equals(java.lang.Object? other);
+    method @InaccessibleFromKotlin public byte[] getBytes();
+    method @InaccessibleFromKotlin public int getConsumed();
+    method @InaccessibleFromKotlin public int getEnd();
+    method public int hashCode();
+    method public java.lang.String toString();
+    property public byte[] bytes;
+    property public int consumed;
+    property public int end;
+  }
+
+  public static final class Framing.ParsedHeader {
+    ctor public Framing.ParsedHeader(org.connectbot.zmodemlib.Header header, int consumed, boolean crc32);
+    method public org.connectbot.zmodemlib.Header component1();
+    method public int component2();
+    method public boolean component3();
+    method public org.connectbot.zmodemlib.Framing.ParsedHeader copy(optional org.connectbot.zmodemlib.Header header, optional int consumed, optional boolean crc32);
+    method public boolean equals(java.lang.Object? other);
+    method @InaccessibleFromKotlin public int getConsumed();
+    method @InaccessibleFromKotlin public boolean getCrc32();
+    method @InaccessibleFromKotlin public org.connectbot.zmodemlib.Header getHeader();
+    method public int hashCode();
+    method public java.lang.String toString();
+    property public int consumed;
+    property public boolean crc32;
+    property public org.connectbot.zmodemlib.Header header;
+  }
+
+  public final class Header {
+    ctor public Header(int type, optional long position);
+    method public int component1();
+    method public long component2();
+    method public org.connectbot.zmodemlib.Header copy(optional int type, optional long position);
+    method public boolean equals(java.lang.Object? other);
+    method @InaccessibleFromKotlin public long getPosition();
+    method @InaccessibleFromKotlin public int getType();
+    method public int hashCode();
+    method public java.lang.String toString();
+    property public long position;
+    property public int type;
+  }
+
+  public final class Metadata {
+    ctor public Metadata(java.lang.String name, java.lang.Long? size);
+    method public java.lang.String component1();
+    method public java.lang.Long? component2();
+    method public org.connectbot.zmodemlib.Metadata copy(optional java.lang.String name, optional java.lang.Long? size);
+    method public boolean equals(java.lang.Object? other);
+    method @InaccessibleFromKotlin public java.lang.String getName();
+    method @InaccessibleFromKotlin public java.lang.Long? getSize();
+    method public int hashCode();
+    method public java.lang.String toString();
+    property public String name;
+    property public Long? size;
+  }
+
+  public final class Progress {
+    ctor public Progress(java.lang.String name, long bytes, java.lang.Long? total);
+    method public java.lang.String component1();
+    method public long component2();
+    method public java.lang.Long? component3();
+    method public org.connectbot.zmodemlib.Progress copy(optional java.lang.String name, optional long bytes, optional java.lang.Long? total);
+    method public boolean equals(java.lang.Object? other);
+    method @InaccessibleFromKotlin public long getBytes();
+    method @InaccessibleFromKotlin public java.lang.String getName();
+    method @InaccessibleFromKotlin public java.lang.Long? getTotal();
+    method public int hashCode();
+    method public java.lang.String toString();
+    property public long bytes;
+    property public String name;
+    property public Long? total;
+  }
+
+  public final class Session {
+    ctor public Session(kotlin.jvm.functions.Function2<? super byte[],? super kotlin.coroutines.Continuation<? super kotlin.Unit>,? extends java.lang.Object?> output, kotlin.jvm.functions.Function2<? super org.connectbot.zmodemlib.Metadata,? super kotlin.coroutines.Continuation<? super org.connectbot.zmodemlib.Download?>,? extends java.lang.Object?> receive, optional kotlin.jvm.functions.Function1<? super org.connectbot.zmodemlib.Progress,kotlin.Unit> progress, optional int maxRetries, optional int initialWindowBytes, optional int maxWindowBytes);
+    method public suspend java.lang.Object? accept(byte[] bytes, kotlin.coroutines.Continuation<? super byte[]>);
+    method public suspend java.lang.Object? cancel(optional java.lang.String reason, optional boolean notify, kotlin.coroutines.Continuation<? super kotlin.Unit>);
+    method @InaccessibleFromKotlin public boolean getDone();
+    method @InaccessibleFromKotlin public java.lang.String? getFailure();
+    method public suspend java.lang.Object? start(org.connectbot.zmodemlib.Header request, optional java.util.List<? extends org.connectbot.zmodemlib.Upload> files, kotlin.coroutines.Continuation<? super kotlin.Unit>);
+    method public suspend java.lang.Object? timeout(kotlin.coroutines.Continuation<? super kotlin.Unit>);
+    property public boolean done;
+    property public String? failure;
+  }
+
+  public interface Upload {
+    method @InaccessibleFromKotlin public java.lang.String getName();
+    method @InaccessibleFromKotlin public long getSize();
+    method public suspend java.lang.Object? read(long offset, int length, kotlin.coroutines.Continuation<? super byte[]>);
+    property public abstract String name;
+    property public abstract long size;
+  }
+
+}
+

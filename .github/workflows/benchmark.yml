@@ -1,0 +1,52 @@
+name: Transfer benchmark
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: zulu
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          dependency-graph: disabled
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Install interoperability peer
+        run: sudo apt-get update && sudo apt-get install --yes lrzsz
+      - name: Build benchmark client
+        run: ./gradlew :testapp:installDist
+      - name: Compare acknowledgment windows with simulated latency
+        run: |
+          set -o pipefail
+          python3 tests/benchmark.py | tee benchmark.txt
+          {
+            echo '### Upload acknowledgment-window benchmark'
+            echo '512 KiB upload with a simulated 10 ms response delay. Timings are informational.'
+            echo '```text'
+            cat benchmark.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve benchmark results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: transfer-benchmark
+          path: benchmark.txt
+          if-no-files-found: ignore
+          retention-days: 30

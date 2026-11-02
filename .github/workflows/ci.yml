@@ -1,0 +1,122 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workflow-tests:
+    name: Workflow validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          install: true
+          install_args: actionlint shellcheck
+      - name: Validate workflows
+        run: mise exec -- actionlint
+
+  build:
+    name: Build and test (JDK ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [17, 21, 25]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install compilation toolchain
+        id: compiler
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: zulu
+          java-version: '17'
+      - name: Install test runtime
+        if: matrix.java != 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: zulu
+          java-version: ${{ matrix.java }}
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          dependency-graph: disabled
+          validate-wrappers: true
+          cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+      - name: Install interoperability peer
+        run: sudo apt-get update && sudo apt-get install --yes lrzsz
+      - name: Build, check formatting and API, run tests, and stage publication
+        env:
+          COMPILE_JAVA_HOME: ${{ steps.compiler.outputs.path }}
+        run: >-
+          ./gradlew --stacktrace
+          build :testapp:installDist stageMavenPublication
+          "-Porg.gradle.java.installations.paths=$COMPILE_JAVA_HOME,$JAVA_HOME"
+          -PjdkVersion=${{ matrix.java }}
+      - name: Test against lrzsz
+        run: python3 tests/interop.py
+      - name: Preserve test reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports-jdk-${{ matrix.java }}
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Preserve unsigned Maven artifacts
+        if: matrix.java == 17
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unsigned-maven-artifacts
+          path: build/publication/
+          if-no-files-found: error
+          retention-days: 7
+
+  verify:
+    name: Required checks
+    if: always()
+    needs: [workflow-tests, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all checks to succeed
+        env:
+          WORKFLOWS_RESULT: ${{ needs.workflow-tests.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: test "$WORKFLOWS_RESULT" = success && test "$BUILD_RESULT" = success
+
+  publication:
+    name: Attested Maven Central publication
+    needs: verify
+    if: >-
+      github.repository == 'connectbot/cbzmodem' && github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+      attestations: write
+    uses: connectbot/actions/.github/workflows/publish-maven.yml@9b826116f0d49329fbe10985a5abdfa49562f0a0 # v0.2.0
+    with:
+      maven_group: org.connectbot.zmodemlib
+      modules: zmodemlib
+    secrets:
+      MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+      MAVEN_GPG_KEYID: ${{ secrets.MAVEN_GPG_KEYID }}
+      MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+      SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+      SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}

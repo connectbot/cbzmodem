@@ -22,7 +22,9 @@ import java.io.ByteArrayOutputStream
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SessionRecoveryTest {
@@ -92,6 +94,92 @@ class SessionRecoveryTest {
         val prompt = "shell> ".toByteArray()
         assertContentEquals(prompt, receiver.accept(Framing.cancelSequence() + prompt))
         assertTrue(receiver.done)
+    }
+
+    @Test
+    fun missingFinalConfirmationCompletesWithoutRetriesOrFailure() = runBlocking {
+        val wire = mutableListOf<ByteArray>()
+        val receiver = Session(output = { wire.add(it) }, receive = { null })
+        receiver.start(Header(Framing.ZRQINIT))
+        receiver.accept(Framing.header(Header(Framing.ZFIN)))
+        assertTrue(receiver.awaitingFinishConfirmation)
+        assertFalse(receiver.done)
+        val writes = wire.size
+        receiver.timeout()
+        assertTrue(receiver.done)
+        assertFalse(receiver.awaitingFinishConfirmation)
+        assertNull(receiver.failure)
+        assertEquals(writes, wire.size)
+        assertContentEquals("shell>".toByteArray(), receiver.accept("shell>".toByteArray()))
+    }
+
+    @Test
+    fun shellOutputWithoutFinalConfirmationIsPreserved() = runBlocking {
+        for (prompt in listOf("shell> ", "Only a prompt> ", "\r\nshell> ")) {
+            val receiver = Session(output = {}, receive = { null })
+            receiver.start(Header(Framing.ZRQINIT))
+            val tail = receiver.accept(Framing.header(Header(Framing.ZFIN)) + prompt.toByteArray())
+            assertTrue(receiver.done)
+            assertNull(receiver.failure)
+            assertContentEquals(prompt.toByteArray(), tail)
+        }
+    }
+
+    @Test
+    fun finalConfirmationCanSpanReads() = runBlocking {
+        val receiver = Session(output = {}, receive = { null })
+        receiver.start(Header(Framing.ZRQINIT))
+        receiver.accept(Framing.header(Header(Framing.ZFIN)) + "O".toByteArray())
+        assertFalse(receiver.done)
+        assertTrue(receiver.awaitingFinishConfirmation)
+        assertContentEquals("shell>".toByteArray(), receiver.accept("Oshell>".toByteArray()))
+        assertTrue(receiver.done)
+    }
+
+    @Test
+    fun timeoutBeforeFinalHeaderStillRetries() = runBlocking {
+        val wire = mutableListOf<ByteArray>()
+        val receiver = Session(output = { wire.add(it) }, receive = { null })
+        receiver.start(Header(Framing.ZRQINIT))
+        val initial = wire.single()
+        receiver.timeout()
+        assertFalse(receiver.done)
+        assertFalse(receiver.awaitingFinishConfirmation)
+        assertContentEquals(initial, wire.last())
+        assertEquals(2, wire.size)
+    }
+
+    @Test
+    fun missingFileEofCannotBeTreatedAsSuccessfulCompletion() = runBlocking {
+        var aborted = false
+        val receiver = Session(output = {}, receive = {
+            object : Download {
+                override suspend fun write(bytes: ByteArray) = Unit
+                override suspend fun complete() = error("Unexpected completion")
+                override suspend fun abort() {
+                    aborted = true
+                }
+            }
+        })
+        receiver.start(Header(Framing.ZRQINIT))
+        receiver.accept(Framing.header(Header(Framing.ZFILE)) + Framing.packet("file.bin\u00000 0\u0000".toByteArray(), Framing.ZCRCW))
+        assertFailsWith<IllegalArgumentException> { receiver.accept(Framing.header(Header(Framing.ZFIN))) }
+        assertFalse(receiver.done)
+        assertFalse(receiver.awaitingFinishConfirmation)
+        receiver.cancel(notify = false)
+        assertTrue(aborted)
+    }
+
+    @Test
+    fun senderStillWaitsForReceiverFinishHeader() = runBlocking {
+        val wire = mutableListOf<ByteArray>()
+        val sender = Session(output = { wire.add(it) }, receive = { null })
+        sender.start(Header(Framing.ZRINIT))
+        sender.timeout()
+        assertFalse(sender.done)
+        assertFalse(sender.awaitingFinishConfirmation)
+        assertEquals(2, wire.size)
+        assertContentEquals(wire.first(), wire.last())
     }
 
     @Test

@@ -15,15 +15,15 @@ permissions:
 jobs:
   prepare:
     if: github.event.label.name == 'release:prepare'
-    uses: connectbot/actions/.github/workflows/prepare-release.yml@9b826116f0d49329fbe10985a5abdfa49562f0a0 # v0.2.0
+    uses: connectbot/actions/.github/workflows/prepare-release.yml@afbe5170d337a112404df279d64fb3cdf0d6b1ee # v0.2.1
     with:
       tag_prefix: v
       gradle_no_push_prop: release.noPush
   publish:
     if: github.event.label.name == 'release:publish'
-    uses: connectbot/actions/.github/workflows/publish-release.yml@9b826116f0d49329fbe10985a5abdfa49562f0a0 # v0.2.0
+    uses: connectbot/actions/.github/workflows/publish-release.yml@afbe5170d337a112404df279d64fb3cdf0d6b1ee # v0.2.1
     with:
       tag_prefix: v
   branch:
     if: github.event.label.name == 'release:branch'
-    uses: connectbot/actions/.github/workflows/release-branch.yml@9b826116f0d49329fbe10985a5abdfa49562f0a0 # v0.2.0
+    uses: connectbot/actions/.github/workflows/release-branch.yml@afbe5170d337a112404df279d64fb3cdf0d6b1ee # v0.2.1

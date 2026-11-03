@@ -153,10 +153,12 @@ package org.connectbot.zmodemlib {
     ctor public Session(kotlin.jvm.functions.Function2<? super byte[],? super kotlin.coroutines.Continuation<? super kotlin.Unit>,? extends java.lang.Object?> output, kotlin.jvm.functions.Function2<? super org.connectbot.zmodemlib.Metadata,? super kotlin.coroutines.Continuation<? super org.connectbot.zmodemlib.Download?>,? extends java.lang.Object?> receive, optional kotlin.jvm.functions.Function1<? super org.connectbot.zmodemlib.Progress,kotlin.Unit> progress, optional int maxRetries, optional int initialWindowBytes, optional int maxWindowBytes);
     method public suspend java.lang.Object? accept(byte[] bytes, kotlin.coroutines.Continuation<? super byte[]>);
     method public suspend java.lang.Object? cancel(optional java.lang.String reason, optional boolean notify, kotlin.coroutines.Continuation<? super kotlin.Unit>);
+    method @InaccessibleFromKotlin public boolean getAwaitingFinishConfirmation();
     method @InaccessibleFromKotlin public boolean getDone();
     method @InaccessibleFromKotlin public java.lang.String? getFailure();
     method public suspend java.lang.Object? start(org.connectbot.zmodemlib.Header request, optional java.util.List<? extends org.connectbot.zmodemlib.Upload> files, kotlin.coroutines.Continuation<? super kotlin.Unit>);
     method public suspend java.lang.Object? timeout(kotlin.coroutines.Continuation<? super kotlin.Unit>);
+    property public boolean awaitingFinishConfirmation;
     property public boolean done;
     property public String? failure;
   }

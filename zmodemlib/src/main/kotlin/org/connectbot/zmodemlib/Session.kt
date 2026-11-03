@@ -127,6 +127,11 @@ class Session(
         windowBytes = maxOf(minOf(TransferLimits.FALLBACK_WINDOW_BYTES, peerWindowLimit), windowBytes / TransferLimits.WINDOW_SCALE_FACTOR)
     }
 
+    /**
+     * All files are committed and the receiver has acknowledged ZFIN. Only the
+     * sender's final OO remains; callers may use a short grace period before [timeout].
+     */
+    val awaitingFinishConfirmation: Boolean get() = phase == Phase.FINISH && !sending
     val done: Boolean get() = phase == Phase.DONE
 
     var failure: String? = null
@@ -225,13 +230,15 @@ class Session(
         buffer += bytes
 
         while (buffer.isNotEmpty() && !done) {
-            if (phase == Phase.FINISH && !sending) {
-                if (buffer.size < FINISH_CONFIRMATION.length) break
-                if (FINISH_CONFIRMATION.indices.all { buffer[it] == FINISH_CONFIRMATION[it].code.toByte() }) {
-                    buffer = buffer.copyOfRange(FINISH_CONFIRMATION.length, buffer.size)
-                    move(Phase.DONE)
-                    break
-                }
+            if (awaitingFinishConfirmation && buffer[0] != ZPAD.toByte()) {
+                // A terminal can flush OO when sz restores its tty settings. A shell
+                // prompt means the peer has already returned to normal terminal I/O.
+                val compared = minOf(buffer.size, FINISH_CONFIRMATION.length)
+                val matches = (0 until compared).all { buffer[it] == FINISH_CONFIRMATION[it].code.toByte() }
+                if (matches && compared < FINISH_CONFIRMATION.length) break
+                if (matches) buffer = buffer.copyOfRange(FINISH_CONFIRMATION.length, buffer.size)
+                move(Phase.DONE)
+                break
             }
 
             if (packetMode) {
@@ -359,6 +366,7 @@ class Session(
                     output(FINISH_CONFIRMATION.toByteArray(Charsets.US_ASCII))
                     move(Phase.DONE)
                 } else if (!sending) {
+                    require(sink == null) { "Session finished before file EOF" }
                     move(Phase.FINISH)
                     header(Framing.ZFIN)
                 }
@@ -375,8 +383,15 @@ class Session(
         return byteArrayOf()
     }
 
+    /** Retransmits pending data, or completes a received batch whose final OO was lost. */
     suspend fun timeout() {
         if (done) return
+        if (awaitingFinishConfirmation) {
+            // ZFIN already committed the batch. Do not send retries to the shell
+            // just because the unacknowledged OO was lost by the terminal.
+            move(Phase.DONE)
+            return
+        }
 
         reduceWindow()
 

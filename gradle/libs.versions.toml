@@ -1,7 +1,7 @@
 [versions]
 kotlin = "2.4.21"
 coroutines = "1.11.0"
-kstatemachine = "0.38.1"
+kstatemachine = "0.39.1"
 metalava = "0.5.1"
 spotless = "8.11.0"
 black = "26.10.1"
